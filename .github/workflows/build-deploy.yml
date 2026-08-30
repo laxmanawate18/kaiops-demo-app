@@ -1,0 +1,50 @@
+name: Build and Deploy kaiops-demo-app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: project-3da8cb5f-328e-44d3-b7a
+  REGION: us-central1
+  REPO: kaiops-demo-app
+  IMAGE: kaiops-demo-app
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure docker
+        run: gcloud auth configure-docker ${REGION}-docker.pkg.dev
+
+      - name: Build and push image
+        run: |
+          docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }} -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:latest .
+          docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}
+          docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:latest
+          echo "IMAGE_URI=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      # Update the GitOps manifests with the new image tag (ArgoCD auto-syncs).
+      - name: Update manifests with new image
+        run: |
+          sed -i "s|image: .*|image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}|" k8s/deployment.yaml
+          git config user.name "kaiops-ci"
+          git config user.email "kaiops@example.com"
+          git add k8s/deployment.yaml
+          git commit -m "chore: update kaiops-demo-app image to ${{ github.sha }}"
+          git push

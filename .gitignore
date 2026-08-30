@@ -1,0 +1,10 @@
+# Binaries / build
+/bin/
+/kaiops-demo-app
+app
+*.exe
+
+# Go
+/vendor/
+*.test
+*.out
