@@ -53,7 +53,9 @@ jobs:
           git config user.email "kaiops@example.com"
           git add k8s/deployment.yaml
           git commit -m "chore: update kaiops-demo-app image to ${{ github.sha }}"
-          # Push using the PAT explicitly. Disable the checkout credential helper and
-          # override the Origin remote URL with the PAT so the push is authorized.
+          # actions/checkout sets a persistent github-actions[bot] extraheader that
+          # overrides the PAT. Clear it + use the PAT via a clean remote URL so the
+          # push is authorized by the PAT (repo scope), not the bot identity.
+          git config --local --unset-all http.https://github.com/.extraheader || true
           git remote set-url origin "https://x-access-token:${GH_PAT}@github.com/laxmanawate18/kaiops-demo-app.git"
-          git -c credential.helper= -c http.extraheader="AUTHORIZATION: basic $(echo -n x-access-token:${GH_PAT} | base64)" push origin HEAD:main
+          git push origin HEAD:main
