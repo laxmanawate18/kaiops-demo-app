@@ -21,9 +21,23 @@ argocd-application.yaml  # ArgoCD Application (apply after repo exists)
 ## Deploy (one-time)
 ```bash
 # 1. Create namespace + register the ArgoCD Application
-kubectl apply -f argocd-application.yaml
-# ArgoCD syncs k8s/ from this repo automatically on every push.
+kubectl apply -f k8s/deployment.yaml       # creates namespace kaiops-demo + app
+kubectl apply -f argocd-application.yaml    # registers ArgoCD Application
 ```
+- **I (the assistant) can run these** once you've pushed the repo, since I have GKE kubectl access.
+
+## GitHub repository secrets (set once, in the repo Settings → Secrets → Actions)
+| Secret | Value | Purpose |
+|---|---|---|
+| `WIP_PROVIDER` | `projects/275388304596/locations/global/workloadIdentityPools/kaiops-pool/providers/github-demo-app` | GCP Workload Identity (GitHub Actions → GCP). No key needed. |
+| `SERVICE_ACCOUNT` | `kaiops-ci-sa@project-3da8cb5f-328e-44d3-b7a.iam.gserviceaccount.com` | The SA the CI impersonates. |
+| `GH_PAT` | a GitHub PAT with `repo` scope | So CI can push the updated image tag back to the repo. |
+
+> The WIF pool `kaiops-pool` + provider `github-demo-app` + SA `kaiops-ci-sa` (with
+> roles `artifactregistry.writer`, `container.developer`, `iam.serviceAccountUser`,
+> `run.invoker`) are already created in the project. The SA IAM binding grants
+> `principalSet://.../attribute.repository_owner/laxmanawate18` permission to
+> impersonate it. (Org policy disables SA-key creation, so we use WIF — no key.)
 
 ## How the pipeline works
 1. `git push` to `main` triggers `.github/workflows/build-deploy.yml`.

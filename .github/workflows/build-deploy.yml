@@ -20,11 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Authenticate to GCP via Workload Identity Federation (no key needed).
+      # Requires GitHub secrets: WIP_PROVIDER + SERVICE_ACCOUNT.
       - id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
-          service_account: ${{ secrets.WIF_SA }}
+          workload_identity_provider: ${{ secrets.WIP_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -33,6 +35,7 @@ jobs:
         run: gcloud auth configure-docker ${REGION}-docker.pkg.dev
 
       - name: Build and push image
+        id: build
         run: |
           docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }} -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:latest .
           docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}
@@ -40,11 +43,14 @@ jobs:
           echo "IMAGE_URI=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       # Update the GitOps manifests with the new image tag (ArgoCD auto-syncs).
+      # Requires a GitHub PAT secret: GH_PAT (repo scope) for push-back.
       - name: Update manifests with new image
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           sed -i "s|image: .*|image: ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${{ github.sha }}|" k8s/deployment.yaml
           git config user.name "kaiops-ci"
           git config user.email "kaiops@example.com"
           git add k8s/deployment.yaml
           git commit -m "chore: update kaiops-demo-app image to ${{ github.sha }}"
-          git push
+          git push https://x-access-token:${GH_PAT}@github.com/laxmanawate18/kaiops-demo-app.git HEAD:main

@@ -8,3 +8,6 @@ app
 /vendor/
 *.test
 *.out
+
+# GCP service account key (never commit)
+gcp-sa-key*.json
