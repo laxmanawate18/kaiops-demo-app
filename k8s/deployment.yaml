@@ -15,6 +15,7 @@ spec:
   selector:
     matchLabels:
       app: kaiops-demo-app
+  progressDeadlineSeconds: 120
   strategy:
     type: RollingUpdate
     rollingUpdate:
