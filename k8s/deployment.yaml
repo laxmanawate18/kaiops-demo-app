@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: us-central1-docker.pkg.dev/project-3da8cb5f-328e-44d3-b7a/kaiops-demo-app/kaiops-demo-app:e8ee4bc73ac9ff60a63d5ec9e2985ff564e90bbc
+          image: us-central1-docker.pkg.dev/project-3da8cb5f-328e-44d3-b7a/kaiops-demo-app/kaiops-demo-app:74636ebaf7809a4faa6b4d0b94077ef28f1de9eb
           ports:
             - containerPort: 8080
           env:
